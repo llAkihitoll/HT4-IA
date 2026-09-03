@@ -95,6 +95,66 @@ pip install -r requirements-dev.txt
 pytest
 ```
 
+Las pruebas de `tests/test_corpus.py` validan el parser (120 registros, 6
+categorías, IDs únicos y contenido). Las de `tests/test_database_load.py` se
+omiten solas si PostgreSQL no está levantado o la tabla está vacía.
+
+## Carga del corpus
+
+El corpus `Corpus_FAQs_Parachute_SA_2026.txt` debe estar en `data/` (ruta
+definida por `FAQ_FILE` en `.env`).
+
+Con PostgreSQL levantado y el entorno de Python listo:
+
+```bash
+python load_data.py
+```
+
+El script lee el corpus, genera un embedding por FAQ con
+`all-MiniLM-L6-v2` (pregunta + respuesta) y hace `INSERT ... ON CONFLICT`
+sobre `faq_embeddings`. La primera ejecución descarga el modelo.
+
+Salida esperada:
+
+```
+Reading corpus...
+Parsed 120 records.
+Generating embeddings...
+Embeddings generated: 120
+Connecting to PostgreSQL...
+Loading data...
+Loaded 120 records.
+Rows: 120
+Categories: 6
+Embedding dimensions: 384
+Verificación correcta: 120 filas, 6 categorías, embeddings de 384, IDs únicos.
+```
+
+La carga es idempotente: `faq_id` es `UNIQUE` y se actualiza en vez de
+duplicar. Ejecutar `python load_data.py` dos veces deja igual las 120 filas.
+
+## Verificación de la carga
+
+El propio `load_data.py` valida el resultado al final. Para comprobarlo a mano:
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+  SELECT COUNT(*) AS filas,
+         COUNT(DISTINCT category) AS categorias,
+         MIN(vector_dims(embedding)) AS dim
+  FROM faq_embeddings;"'
+```
+
+Debe devolver `filas = 120`, `categorias = 6` y `dim = 384`. Para confirmar
+que no hay IDs repetidos:
+
+```bash
+docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "
+  SELECT faq_id, COUNT(*) FROM faq_embeddings GROUP BY faq_id HAVING COUNT(*) > 1;"'
+```
+
+(sin filas = sin duplicados).
+
 ## Esquema compartido
 
 | Columna | Tipo | Uso |
