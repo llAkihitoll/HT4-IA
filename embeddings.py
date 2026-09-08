@@ -30,7 +30,7 @@ class Embedder:
 
     def encode(self, records: list[FaqRecord]) -> list[list[float]]:
         texts = [embedding_text(record) for record in records]
-        vectors = self.model.encode(texts, show_progress_bar=False)
+        vectors = self._encode_texts(texts)
 
         result = []
         for record, vector in zip(records, vectors):
@@ -41,4 +41,19 @@ class Embedder:
                     f"dimensiones y se esperaban {self.expected_dim}."
                 )
             result.append(vector)
+        return result
+
+    def encode_query(self, query: str) -> list[float]:
+        """Genera el vector de una consulta con el mismo modelo del corpus."""
+        return self._encode_texts([query])[0]
+
+    def _encode_texts(self, texts: list[str]) -> list[list[float]]:
+        vectors = self.model.encode(texts, show_progress_bar=False)
+        result = [[float(value) for value in vector] for vector in vectors]
+        for vector in result:
+            if len(vector) != self.expected_dim:
+                raise ValueError(
+                    f"El embedding tiene {len(vector)} dimensiones y se esperaban "
+                    f"{self.expected_dim}."
+                )
         return result

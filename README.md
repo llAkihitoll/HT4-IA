@@ -172,3 +172,31 @@ docker compose exec postgres sh -c 'psql -U "$POSTGRES_USER" -d "$POSTGRES_DB" -
 
 Las búsquedas semánticas deben ordenar por distancia coseno con el operador
 `<=>` y limitar la cantidad de resultados solicitados por el agente.
+
+## Búsqueda vectorial y agente
+
+La función `search.search_faqs(query, limit=5)` genera el embedding de la
+consulta con el mismo modelo del corpus, consulta pgvector por distancia coseno
+y devuelve como máximo los resultados solicitados. `SEARCH_MIN_SIMILARITY`
+controla el umbral mínimo de evidencia (valor predeterminado: `0.35`).
+
+Después de levantar PostgreSQL y ejecutar `python load_data.py`, complete
+`LLM_API_KEY` en `.env` y ejecute:
+
+```bash
+python agent.py
+```
+
+El agente acepta varias preguntas consecutivas. Escriba `Bye` o presione
+`Ctrl+C` para finalizar. Para cada pregunta obliga una llamada a
+`search_faqs`; solo redacta su respuesta a partir de los resultados recuperados
+y muestra sus `faq_id` como fuentes. Si la búsqueda no encuentra evidencia,
+responde que no puede contestar con la información del corpus.
+
+Las pruebas cubren preguntas conocidas, paráfrasis, consultas fuera del corpus,
+validación del límite, uso efectivo de la herramienta y varias preguntas en una
+misma sesión:
+
+```bash
+pytest
+```

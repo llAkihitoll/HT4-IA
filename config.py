@@ -22,6 +22,7 @@ class Settings:
     llm_api_key: str
     llm_base_url: str
     llm_model: str
+    search_min_similarity: float
 
 
 def load_settings(
@@ -51,6 +52,7 @@ def load_settings(
         "LLM_BASE_URL", "https://api.groq.com/openai/v1"
     ).strip()
     llm_model = values.get("LLM_MODEL", "openai/gpt-oss-20b").strip()
+    similarity_value = values.get("SEARCH_MIN_SIMILARITY", "0.35").strip()
 
     if not database_url:
         raise ConfigurationError("DATABASE_URL no puede estar vacío.")
@@ -79,6 +81,17 @@ def load_settings(
             "EMBEDDING_DIMENSION debe coincidir con VECTOR(384) del esquema."
         )
 
+    try:
+        search_min_similarity = float(similarity_value)
+    except ValueError as error:
+        raise ConfigurationError(
+            "SEARCH_MIN_SIMILARITY debe ser un número entre -1 y 1."
+        ) from error
+    if not -1.0 <= search_min_similarity <= 1.0:
+        raise ConfigurationError(
+            "SEARCH_MIN_SIMILARITY debe ser un número entre -1 y 1."
+        )
+
     faq_file = Path(faq_value).expanduser()
     if not faq_file.is_absolute():
         faq_file = project_root / faq_file
@@ -91,4 +104,5 @@ def load_settings(
         llm_api_key=llm_api_key,
         llm_base_url=llm_base_url,
         llm_model=llm_model,
+        search_min_similarity=search_min_similarity,
     )

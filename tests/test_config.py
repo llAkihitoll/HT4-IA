@@ -13,6 +13,7 @@ def test_load_settings_uses_project_defaults(tmp_path: Path) -> None:
         tmp_path / "data/Corpus_FAQs_Parachute_SA_2026.txt"
     ).resolve()
     assert settings.database_url.endswith("/parachute_faqs")
+    assert settings.search_min_similarity == 0.35
 
 
 def test_load_settings_rejects_schema_dimension_mismatch(tmp_path: Path) -> None:
@@ -28,3 +29,8 @@ def test_load_settings_requires_key_only_for_agent(tmp_path: Path) -> None:
 
     with pytest.raises(ConfigurationError, match="LLM_API_KEY"):
         load_settings(project_root=tmp_path, env={}, require_llm_key=True)
+
+
+def test_load_settings_rejects_invalid_similarity(tmp_path: Path) -> None:
+    with pytest.raises(ConfigurationError, match="SEARCH_MIN_SIMILARITY"):
+        load_settings(project_root=tmp_path, env={"SEARCH_MIN_SIMILARITY": "1.5"})
